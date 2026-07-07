@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jo-Kén-Pokémon — Jornada Johto</title>
+<link rel="stylesheet" href="jokenpokemon.css">
+</head>
+<body>
+<div class="stars" id="stars"></div>
+
+<header>
+  <button class="icon-btn hidden" id="homeBtn" title="Menu">🏠</button>
+  <h1>JO-KÉN-POKÉMON</h1>
+  <div class="subtitle">PROMOÇÃO JORNADA JOHTO · ELMA CHIPS 2001</div>
+  <button class="icon-btn" id="soundBtn" title="Som">🔊</button>
+</header>
+
+<!-- ============ MENU ============ -->
+<section class="screen" id="screen-menu">
+  <div class="player-bar">
+    <div class="avatar">🧢</div>
+    <div class="pinfo">
+      <div class="pname">Treinador(a)</div>
+      <div class="xpbar"><i id="xpFill" style="width:0%"></i></div>
+      <div class="plevel" id="levelLabel">Nível 1</div>
+    </div>
+    <div class="wallet">
+      <span class="coins" id="wCoins">🪙 0</span>
+      <span class="cards" id="wCards">🎴 0/60</span>
+    </div>
+  </div>
+
+  <div class="carousel-zone">
+    <div class="pedestal"></div>
+    <div class="carousel" id="carousel"></div>
+    <div class="caro-name" id="caroName"></div>
+  </div>
+
+  <div class="menu-list">
+    <button class="menu-btn" data-nav="quick"><span class="ic">⚡</span><span>PARTIDA RÁPIDA<small>primeiro a 7 pontos, baralho completo</small></span></button>
+    <button class="menu-btn alt2" data-nav="campaign"><span class="ic">🏆</span><span>CAMPANHA DO RECREIO<small>vença desafios, ganhe moedas, complete a coleção</small></span></button>
+    <button class="menu-btn alt" data-nav="survival"><span class="ic">🔥</span><span>SOBREVIVÊNCIA<small>quantas rodadas seguidas você aguenta?</small></span></button>
+    <button class="menu-btn" data-nav="album"><span class="ic">📗</span><span>ÁLBUM DE FIGURINHAS<small>os 60 cards — toque para virar</small></span></button>
+    <button class="menu-btn alt" data-nav="rules"><span class="ic">📖</span><span>OS 8 ELEMENTOS<small>tabela oficial do verso dos cards</small></span></button>
+  </div>
+</section>
+
+<!-- ============ BATALHA ============ -->
+<section class="screen hidden" id="screen-game">
+  <div class="mode-tag" id="modeTag"></div>
+  <div class="topbar">
+    <div class="scoreboard">
+      <div class="score-side player"><div class="who">VOCÊ</div><div class="pts" id="pScore">0</div></div>
+      <div class="vs">VS</div>
+      <div class="score-side cpu"><div class="who" id="cpuName">RIVAL</div><div class="pts" id="cScore">0</div></div>
+    </div>
+    <button class="rules-btn" data-nav="rules">📖</button>
+  </div>
+  <div class="streak" id="streak"></div>
+  <div class="arena" id="arena">
+    <div class="slot" id="slotPlayer">sua carta<br>aqui</div>
+    <div class="shout" id="shout">JO-KÉN-POKÉMON!</div>
+    <div class="clash-burst" id="burst">💥</div>
+    <div class="slot" id="slotCpu">carta do<br>rival</div>
+  </div>
+  <div class="result-banner" id="banner"></div>
+  <div class="result-sub" id="bannerSub"></div>
+  <div class="hand-label" id="handLabel">ESCOLHA SUA CARTA</div>
+  <div class="hand" id="hand"></div>
+</section>
+
+<!-- ============ ÁLBUM ============ -->
+<section class="screen hidden" id="screen-album">
+  <div class="album-head">
+    <div class="album-progress" id="albumProgress"></div>
+  </div>
+  <div class="album-hint">Toque num card para virar e ver o elemento — toque de novo para ver a 2ª versão dele</div>
+  <div class="album" id="albumGrid"></div>
+</section>
+
+<!-- ============ CAMPANHA ============ -->
+<section class="screen hidden" id="screen-campaign">
+  <div class="camp-wallet">
+    <span class="coins" id="campCoins">🪙 0</span>
+    <span class="col-progress" id="campProgress">📗 0/60 cards</span>
+  </div>
+  <div class="camp-section">
+    <h3>🍿 BANCA DE SALGADINHOS</h3>
+    <div class="shop-row">
+      <button class="pack-btn" id="buyPack1"><span class="pk-name">PACOTE SURPRESA</span><span class="pk-price">1 card · 🪙 10</span></button>
+      <button class="pack-btn" id="buyPack3"><span class="pk-name">COMBO DA TIA</span><span class="pk-price">3 cards · 🪙 26</span></button>
+    </div>
+    <p class="small-note" style="text-align:center;margin-top:6px;">Card repetido vira 🪙 4 na troca com a molecada</p>
+  </div>
+  <div class="camp-section">
+    <h3>🥊 DESAFIOS DO RECREIO</h3>
+    <div class="rival-list" id="rivalList"></div>
+  </div>
+  <button class="camp-reset" id="campReset">recomeçar campanha do zero</button>
+</section>
+
+<!-- ============ overlays ============ -->
+<div class="overlay hidden" id="rulesOverlay">
+  <div class="panel">
+    <span class="big-emoji">🎴</span>
+    <h2>OS 8 ELEMENTOS</h2>
+    <p>Tabela oficial dos versos dos cards:</p>
+    <div class="elem-table" id="elemTable"></div>
+    <p>🛡️ <strong>Anti-Chamas</strong> e <strong>Impermeável</strong> são jogados junto com outra carta: toque no escudo para prepará-lo e depois escolha a carta de ataque. Se o rival vier de Fogo/Água, o escudo anula e vence!</p>
+    <p class="small-note">Cada card oficial tinha 2 versões de elemento — o baralho sorteia uma por card, como nos pacotes.</p>
+    <button class="btn" id="rulesClose">FECHAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="diffOverlay">
+  <div class="panel">
+    <span class="big-emoji">🎮</span>
+    <h2 id="diffTitle">DIFICULDADE</h2>
+    <p id="diffDesc"></p>
+    <div class="diff-row">
+      <button class="diff-btn" data-diff="easy">😊 FÁCIL</button>
+      <button class="diff-btn" data-diff="normal">😎 NORMAL</button>
+      <button class="diff-btn" data-diff="hard">😈 DIFÍCIL</button>
+    </div>
+    <button class="btn secondary" id="diffCancel">VOLTAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div class="panel">
+    <span class="big-emoji" id="goEmoji">🏆</span>
+    <h2 id="goTitle"></h2>
+    <p id="goText"></p>
+    <button class="btn" id="goMain">CONTINUAR</button>
+    <button class="btn secondary" id="goAgain">JOGAR DE NOVO</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="packOverlay">
+  <div class="panel">
+    <h2>ABRINDO PACOTE...</h2>
+    <div class="pack-stage" id="packStage"></div>
+    <button class="btn hidden" id="packDone">FECHAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="confirmOverlay">
+  <div class="panel">
+    <span class="big-emoji">⚠️</span>
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmText"></p>
+    <button class="btn" id="confirmYes">SIM</button>
+    <button class="btn secondary" id="confirmNo">CANCELAR</button>
+  </div>
+</div>
+<script src="shared/util.js"></script>
+<script src="shared/cards.js"></script>
+<script src="jokenpokemon.js"></script>
+</body>
+</html>
