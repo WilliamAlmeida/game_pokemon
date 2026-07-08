@@ -1,12 +1,12 @@
 /* =====================================================================
-   build.js — empacota cada versão modular num ÚNICO .html autossuficiente.
+   build.js — empacota o jogo modular num ÚNICO .html autossuficiente.
 
    Uso:  node build.js
-   Saída: dist/jokenpokemon.html  e  dist/jokenpokemon-battle-chips.html
+   Saída: dist/index.html
 
    O que faz:
    - inline do CSS (<link> -> <style>)
-   - inline dos JS na ordem correta (util -> cards -> versão) num só <script>
+   - inline dos JS na ordem correta (util -> cards -> index) num só <script>
    - troca as refs "assets/xxx.jpg" por data:URI base64 (arquivo fica offline)
    Os arquivos-fonte não são alterados; só se lê deles.
 ===================================================================== */
@@ -32,10 +32,8 @@ function inlineAssets(code){
 }
 
 const GAMES = [
-  { html:'jokenpokemon.html',              css:'jokenpokemon.css',
-    js:['shared/util.js','shared/cards.js','jokenpokemon.js'] },
-  { html:'jokenpokemon-battle-chips.html', css:'jokenpokemon-battle-chips.css',
-    js:['shared/util.js','shared/cards.js','jokenpokemon-battle-chips.js'] },
+  { html:'index.html', css:'index.css',
+    js:['shared/util.js','shared/cards.js','index.js'] },
 ];
 
 fs.mkdirSync(DIST, { recursive:true });

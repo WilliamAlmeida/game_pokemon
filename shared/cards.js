@@ -1,9 +1,6 @@
 /* =====================================================================
-   cards.js — BANCO DE DADOS compartilhado pelas DUAS versões
-   (jokenpokemon.html e jokenpokemon-battle-chips.html)
-
-   Edite aqui uma única vez e as duas versões refletem a mudança:
-   os 60 cards, a tabela dos 8 elementos e o atlas de sprites.
+   cards.js — BANCO DE DADOS do jogo (usado por index.js).
+   Os 60 cards, a tabela dos 8 elementos e o atlas de sprites.
 
    Sprite sheets em assets/ (ver frontSprite/backSprite no fim):
      frentes: grade 4x5 (20 cards por folha)

@@ -1,6 +1,5 @@
 /* =====================================================================
-   util.js — helpers genéricos compartilhados pelas DUAS versões.
-   Carregado ANTES de cards.js e do script da versão.
+   util.js — helpers genéricos. Carregado ANTES de cards.js e index.js.
 ===================================================================== */
 const $=id=>document.getElementById(id);
 const wait=ms=>new Promise(r=>setTimeout(r,ms));

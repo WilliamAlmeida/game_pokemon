@@ -1,5 +1,5 @@
 /* =====================================================================
-   jokenpokemon.js — lógica da versão "Jornada Johto" (página cheia).
+   index.js — lógica do jogo Jo-Kén-Pokémon "Jornada Johto".
    Depende de shared/util.js e shared/cards.js (carregados antes).
    Dados dos cards, elementos e sprites vivem em shared/cards.js.
 ===================================================================== */
