@@ -56,10 +56,21 @@ function newRoom(hostName){
     code, state:'waiting', target:7, createdAt:Date.now(), finishedAt:null,
     players:{ p1:newPlayer(hostName,'JOGADOR 1'), p2:null },
     round:{ seq:0, resultSeq:0, result:null, pending:{p1:null,p2:null} },
-    winner:null, forfeit:false
+    winner:null, forfeit:false, rematch:{p1:false,p2:false}
   };
   rooms.set(code, room);
   return room;
+}
+/* reseta uma sala 'finished' pra uma nova partida, sem reemitir código nem
+   playerIds — usado quando os dois jogadores aceitam revanche */
+function resetRoomForRematch(room){
+  const {p1,p2}=room.players;
+  p1.score=0; p1.streak=0; p1.deck=buildFullDeckServer(); p1.hand=[];
+  p2.score=0; p2.streak=0; p2.deck=buildFullDeckServer(); p2.hand=[];
+  drawHand(p1.deck,p1.hand); drawHand(p2.deck,p2.hand);
+  room.round={ seq:1, resultSeq:0, result:null, pending:{p1:null,p2:null} };
+  room.state='active'; room.winner=null; room.forfeit=false; room.finishedAt=null;
+  room.rematch={p1:false,p2:false};
 }
 function roleFor(room, playerId){
   if(room.players.p1 && room.players.p1.id===playerId) return 'p1';
@@ -93,7 +104,9 @@ function viewFor(room, role){
     return {...base, you, opp:oppView, result};
   }
   // finished
-  return {...base, winner: room.winner===role?'you':'opp', forfeit:room.forfeit, you, opp:oppView, result};
+  const rematch = room.rematch || {p1:false,p2:false};
+  return {...base, winner: room.winner===role?'you':'opp', forfeit:room.forfeit, you, opp:oppView, result,
+    rematch:{ you:!!rematch[role], opp:!!rematch[otherRole(role)] }};
 }
 
 /* ================== resolução de rodada ================== */
@@ -241,6 +254,22 @@ function handleApi(req, res, u){
       if(room.round.pending[otherRole(role)]) resolveRound(room);
 
       sendJson(res,200,{ok:true});
+      return;
+    }
+
+    if(action==='rematch'){
+      const code=(body.code||'').toUpperCase();
+      const room=rooms.get(code);
+      const role=room && roleFor(room, body.playerId);
+      if(!room || !role){ sendJson(res,404,{ok:false,error:'room_not_found'}); return; }
+      if(room.state!=='finished'){ sendJson(res,409,{ok:false,error:'not_finished'}); return; }
+      if(!room.rematch) room.rematch={p1:false,p2:false};
+      room.rematch[role]=true;
+      room.players[role].lastSeen=Date.now();
+      room.players[role].connected=true;
+      const bothAccepted = room.rematch.p1 && room.rematch.p2;
+      if(bothAccepted) resetRoomForRematch(room);
+      sendJson(res,200,{ok:true, waiting:!bothAccepted});
       return;
     }
 

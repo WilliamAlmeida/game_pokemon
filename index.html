@@ -9,6 +9,11 @@
 <body>
 <div class="stars" id="stars"></div>
 
+<audio id="battleMusic" loop preload="none">
+  <source src="assets/golden_coin_sprint.ogg" type="audio/ogg">
+  <source src="assets/golden_coin_sprint.mp3" type="audio/mpeg">
+</audio>
+
 <header>
   <button class="icon-btn hidden" id="homeBtn" title="Menu">🏠</button>
   <h1 id="gameTitle">JO-KÉN-POKÉMON</h1>
@@ -102,6 +107,22 @@
 </section>
 
 <!-- ============ overlays ============ -->
+<div class="overlay hidden" id="soundOverlay">
+  <div class="panel">
+    <span class="big-emoji">🔊</span>
+    <h2>SOM</h2>
+    <div class="sound-row">
+      <label class="sound-check"><input type="checkbox" id="musicOnChk"> 🎵 Música de batalha</label>
+      <input type="range" id="musicVolRange" class="vol-range" min="0" max="100" value="50">
+    </div>
+    <div class="sound-row">
+      <label class="sound-check"><input type="checkbox" id="sfxOnChk"> 🔔 Efeitos sonoros</label>
+      <input type="range" id="sfxVolRange" class="vol-range" min="0" max="100" value="70">
+    </div>
+    <button class="btn" id="soundClose">FECHAR</button>
+  </div>
+</div>
+
 <div class="overlay hidden" id="rulesOverlay">
   <div class="panel">
     <span class="big-emoji">🎴</span>

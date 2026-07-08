@@ -17,7 +17,8 @@ const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');
 
 const MIME = { '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png',
-               '.gif':'image/gif', '.svg':'image/svg+xml', '.webp':'image/webp' };
+               '.gif':'image/gif', '.svg':'image/svg+xml', '.webp':'image/webp',
+               '.ogg':'audio/ogg', '.mp3':'audio/mpeg' };
 
 // troca toda ocorrência de assets/arquivo.ext (em aspas ou url()) por base64
 function inlineAssets(code){
@@ -57,6 +58,9 @@ for(const g of GAMES){
     if(first){ first=false; return `\n<script>\n${js}\n</script>`; }
     return '';
   });
+
+  // 3) refs a assets/ que sobraram no HTML puro (ex: <source src="assets/...">) -> inline
+  html = inlineAssets(html);
 
   const out = path.join(DIST, g.html);
   fs.writeFileSync(out, html);

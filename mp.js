@@ -6,11 +6,11 @@
 
    Sincroniza com server.js via polling HTTP (~700ms) sob /mp/*.
 ===================================================================== */
-let mpState = { code:null, playerId:null, pollTimer:null, matchStarted:false, lastResultSeq:0 };
+let mpState = { code:null, playerId:null, pollTimer:null, matchStarted:false, matchEnded:false, lastResultSeq:0 };
 
 function mpOpenLobby(){
   mpStopPolling();
-  mpState = { code:null, playerId:null, pollTimer:null, matchStarted:false, lastResultSeq:0 };
+  mpState = { code:null, playerId:null, pollTimer:null, matchStarted:false, matchEnded:false, lastResultSeq:0 };
   $('mpChoice').classList.remove('hidden');
   $('mpCreatePanel').classList.add('hidden');
   $('mpJoinPanel').classList.add('hidden');
@@ -100,6 +100,11 @@ async function mpHandleState(data){
     return; // host aguardando, nada a fazer (texto já fixo)
   }
   if(data.state==='active'){
+    if(mpState.matchEnded){
+      // estávamos na tela de fim e a sala voltou a ficar ativa: revanche aceita pelos dois
+      mpState.matchEnded=false; mpState.matchStarted=false; mpState.lastResultSeq=0;
+      $('endOverlay').classList.add('hidden');
+    }
     if(!mpState.matchStarted){ await mpEnterMatch(data); }
     if(data.result && data.result.resultSeq>mpState.lastResultSeq){
       mpState.lastResultSeq=data.result.resultSeq;
@@ -126,7 +131,12 @@ async function mpHandleState(data){
         outcome:data.result.outcome,    phrase:data.result.phrase
       });
     }
-    mpEndMatch(data);
+    if(!mpState.matchEnded){
+      mpState.matchEnded=true;
+      mpEndMatch(data);
+    }else{
+      mpUpdateRematchUI(data);
+    }
   }
 }
 
@@ -167,7 +177,10 @@ async function mpPlayCard(i){
 }
 
 function mpEndMatch(data){
-  battle.active=false; mpStopPolling();
+  battle.active=false;
+  // não para o polling aqui: ele precisa continuar rodando em segundo plano
+  // pra detectar quando os dois jogadores aceitarem uma revanche (state volta
+  // a 'active') — só mpLeave() (botão MENU / fechar a aba) para o polling.
   const won=data.winner==='you';
   const emoji=won?'🏆':'😵';
   const title=data.forfeit
@@ -176,8 +189,32 @@ function mpEndMatch(data){
   $('goEmoji').textContent=emoji;$('goTitle').textContent=title;
   $('goText').textContent=`Placar final ${data.you.score} × ${data.opp.score}.`;
   $('goMain').textContent='MENU';
+  $('goAgain').textContent='REVANCHE';$('goAgain').disabled=false;
   if(won){gainXp(20);confettiRain();sfx.fanfare();}else sfx.gameover();
   $('endOverlay').classList.remove('hidden');
+}
+
+function mpUpdateRematchUI(data){
+  if(data.rematch && data.rematch.opp && !data.rematch.you){
+    $('goText').textContent = `Placar final ${data.you.score} × ${data.opp.score}. O outro jogador quer revanche!`;
+  }
+}
+
+async function mpRequestRematch(){
+  $('goAgain').disabled=true; $('goAgain').textContent='AGUARDANDO O OUTRO JOGADOR...';
+  try{
+    const r=await fetch('/mp/rematch',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:mpState.code,playerId:mpState.playerId})});
+    const data=await r.json();
+    if(!data.ok){ $('goAgain').disabled=false; $('goAgain').textContent='REVANCHE'; return; }
+    if(data.waiting){
+      $('goText').textContent += ' Aguardando o outro jogador aceitar a revanche...';
+    }
+    // se os dois já aceitaram, o próximo poll (que continua rodando) detecta
+    // state:'active' sozinho e troca de tela — ver mpHandleState.
+  }catch(e){
+    $('goAgain').disabled=false; $('goAgain').textContent='REVANCHE';
+  }
 }
 
 function mpLeave(){

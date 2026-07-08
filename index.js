@@ -28,9 +28,20 @@ function newSave(){
     const k=Math.floor(Math.random()*pool.length);
     owned[pool.splice(k,1)[0]]=1;
   }
-  return {coins:20, owned, beaten:{}, bestStreak:0, sound:true, xp:0};
+  return {coins:20, owned, beaten:{}, bestStreak:0, xp:0,
+    musicOn:true, sfxOn:true, musicVol:0.5, sfxVol:0.7};
 }
-function loadSave(){ save=storage.read()||newSave(); if(typeof save.xp!=='number')save.xp=0; storage.write(); }
+function loadSave(){
+  save=storage.read()||newSave();
+  if(typeof save.xp!=='number')save.xp=0;
+  // migração de saves antigos (campo único "sound") pros 2 toggles novos
+  const legacy = typeof save.sound==='boolean' ? save.sound : true;
+  if(typeof save.musicOn!=='boolean')save.musicOn=legacy;
+  if(typeof save.sfxOn!=='boolean')save.sfxOn=legacy;
+  if(typeof save.musicVol!=='number')save.musicVol=0.5;
+  if(typeof save.sfxVol!=='number')save.sfxVol=0.7;
+  storage.write();
+}
 loadSave();
 const ownedCount=()=>Object.keys(save.owned).length;
 
@@ -49,7 +60,7 @@ function toastLevel(){
 }
 const ownedTotal=()=>Object.values(save.owned).reduce((a,b)=>a+b,0);
 
-/* ================== SOM — sintetizado (Web Audio) ================== */
+/* ================== SOM — efeitos sintetizados (Web Audio) ================== */
 let actx=null;
 function ac(){
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
@@ -58,29 +69,44 @@ function ac(){
 }
 document.addEventListener('pointerdown',()=>ac(),{once:true});
 function tone(f,d=0.12,type='square',vol=0.13,delay=0,slide=null){
-  if(!save.sound)return;const ctx=ac();if(!ctx)return;
+  if(!save.sfxOn||save.sfxVol<=0)return;const ctx=ac();if(!ctx)return;
   const t=ctx.currentTime+delay;
   const o=ctx.createOscillator(),g=ctx.createGain();
   o.type=type;o.frequency.setValueAtTime(f,t);
   if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);
-  g.gain.setValueAtTime(vol,t);
+  g.gain.setValueAtTime(vol*save.sfxVol,t);
   g.gain.exponentialRampToValueAtTime(0.001,t+d);
   o.connect(g).connect(ctx.destination);
   o.start(t);o.stop(t+d+0.03);
 }
 function noiseHit(d=0.28,vol=0.28,delay=0){
-  if(!save.sound)return;const ctx=ac();if(!ctx)return;
+  if(!save.sfxOn||save.sfxVol<=0)return;const ctx=ac();if(!ctx)return;
   const t=ctx.currentTime+delay;
   const buf=ctx.createBuffer(1,ctx.sampleRate*d,ctx.sampleRate);
   const data=buf.getChannelData(0);
   for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
   const src=ctx.createBufferSource();src.buffer=buf;
-  const g=ctx.createGain();g.gain.setValueAtTime(vol,t);
+  const g=ctx.createGain();g.gain.setValueAtTime(vol*save.sfxVol,t);
   g.gain.exponentialRampToValueAtTime(0.001,t+d);
   const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1200;
   src.connect(lp).connect(g).connect(ctx.destination);
   src.start(t);
 }
+
+/* ================== MÚSICA DE BATALHA (arquivo real) ================== */
+const battleMusic=$('battleMusic');
+document.addEventListener('pointerdown',()=>{
+  // "destrava" o elemento de áudio no primeiro toque (política de autoplay)
+  battleMusic.play().then(()=>battleMusic.pause()).catch(()=>{});
+},{once:true});
+function applyMusicVolume(){ battleMusic.volume=save.musicVol; }
+function startMusic(){
+  if(!save.musicOn)return;
+  applyMusicVolume();
+  battleMusic.currentTime=0;
+  battleMusic.play().catch(()=>{});
+}
+function stopMusic(){ battleMusic.pause(); }
 const sfx={
   click(){tone(600,.06,'square',.09);},
   deal(){tone(500,.05,'triangle',.08);tone(700,.05,'triangle',.08,.06);},
@@ -174,6 +200,7 @@ function show(name){
   if(name==='menu'){refreshMenu();startCarousel();} else stopCarousel();
   if(name==='album')renderAlbum();
   if(name==='campaign')renderCampaign();
+  if(name==='game')startMusic(); else stopMusic();
 }
 function refreshMenu(){
   $('xpFill').style.width=(save.xp%100)+'%';
@@ -216,12 +243,42 @@ $('homeBtn').addEventListener('click',()=>{sfx.click();
   });}
   else show('menu');
 });
-$('soundBtn').addEventListener('click',()=>{
-  save.sound=!save.sound;storage.write();
-  $('soundBtn').textContent=save.sound?'🔊':'🔇';
-  sfx.click();
+/* ================== modal de SOM (música + efeitos, com volume) ================== */
+function refreshSoundIcon(){
+  $('soundBtn').textContent = (save.musicOn||save.sfxOn) ? '🔊' : '🔇';
+}
+function setRangeUI(el,val){
+  const pct=Math.round(val*100);
+  el.value=pct;
+  el.style.setProperty('--val',pct+'%');
+}
+function openSoundSettings(){
+  $('musicOnChk').checked=save.musicOn;
+  $('sfxOnChk').checked=save.sfxOn;
+  setRangeUI($('musicVolRange'),save.musicVol);
+  setRangeUI($('sfxVolRange'),save.sfxVol);
+  $('soundOverlay').classList.remove('hidden');
+}
+$('soundBtn').addEventListener('click',()=>{sfx.click();openSoundSettings();});
+$('soundClose').addEventListener('click',()=>{sfx.click();$('soundOverlay').classList.add('hidden');});
+$('musicOnChk').addEventListener('change',(e)=>{
+  save.musicOn=e.target.checked;storage.write();refreshSoundIcon();
+  const inBattle=!$('screen-game').classList.contains('hidden');
+  if(inBattle){ if(save.musicOn)startMusic(); else stopMusic(); }
 });
-$('soundBtn').textContent=save.sound?'🔊':'🔇';
+$('sfxOnChk').addEventListener('change',(e)=>{
+  save.sfxOn=e.target.checked;storage.write();refreshSoundIcon();
+  if(save.sfxOn)sfx.click();
+});
+$('musicVolRange').addEventListener('input',(e)=>{
+  save.musicVol=(+e.target.value)/100;setRangeUI(e.target,save.musicVol);storage.write();
+  applyMusicVolume();
+});
+$('sfxVolRange').addEventListener('input',(e)=>{
+  save.sfxVol=(+e.target.value)/100;setRangeUI(e.target,save.sfxVol);storage.write();
+});
+$('sfxVolRange').addEventListener('change',()=>{sfx.click();});
+refreshSoundIcon();
 
 document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{
   sfx.click();
@@ -626,16 +683,17 @@ function endBattle(won){
   }
   $('goEmoji').textContent=emoji;$('goTitle').textContent=title;$('goText').textContent=text;
   $('goMain').textContent=m==='campaign'?'IR PARA A BANCA':'MENU';
+  $('goAgain').textContent='JOGAR DE NOVO';$('goAgain').disabled=false;
   $('endOverlay').classList.remove('hidden');
 }
 $('goMain').addEventListener('click',()=>{sfx.click();
   $('endOverlay').classList.add('hidden');
-  if(battle.mode==='multiplayer'){show('menu');return;}
+  if(battle.mode==='multiplayer'){mpLeave();show('menu');return;}
   show(lastCfg&&lastCfg.mode==='campaign'?'campaign':'menu');
 });
 $('goAgain').addEventListener('click',()=>{sfx.click();
+  if(battle.mode==='multiplayer'){mpRequestRematch();return;}
   $('endOverlay').classList.add('hidden');
-  if(battle.mode==='multiplayer'){mpOpenLobby();return;}
   if(lastCfg)startBattle(lastCfg);
 });
 
