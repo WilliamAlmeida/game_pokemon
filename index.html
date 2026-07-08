@@ -11,8 +11,8 @@
 
 <header>
   <button class="icon-btn hidden" id="homeBtn" title="Menu">🏠</button>
-  <h1>JO-KÉN-POKÉMON</h1>
-  <div class="subtitle">PROMOÇÃO JORNADA JOHTO · ELMA CHIPS 2001</div>
+  <h1 id="gameTitle">JO-KÉN-POKÉMON</h1>
+  <div class="subtitle" id="gameSubtitle">PROMOÇÃO JORNADA JOHTO · ELMA CHIPS 2001</div>
   <button class="icon-btn" id="soundBtn" title="Som">🔊</button>
 </header>
 
@@ -41,6 +41,7 @@
     <button class="menu-btn" data-nav="quick"><span class="ic">⚡</span><span>PARTIDA RÁPIDA<small>primeiro a 7 pontos, baralho completo</small></span></button>
     <button class="menu-btn alt2" data-nav="campaign"><span class="ic">🏆</span><span>CAMPANHA DO RECREIO<small>vença desafios, ganhe moedas, complete a coleção</small></span></button>
     <button class="menu-btn alt" data-nav="survival"><span class="ic">🔥</span><span>SOBREVIVÊNCIA<small>quantas rodadas seguidas você aguenta?</small></span></button>
+    <button class="menu-btn alt2" data-nav="multiplayer"><span class="ic">📶</span><span>MULTIPLAYER LOCAL<small>2 jogadores no mesmo WiFi · PC + celular</small></span></button>
     <button class="menu-btn" data-nav="album"><span class="ic">📗</span><span>ÁLBUM DE FIGURINHAS<small>os 60 cards — toque para virar</small></span></button>
     <button class="menu-btn alt" data-nav="rules"><span class="ic">📖</span><span>OS 8 ELEMENTOS<small>tabela oficial do verso dos cards</small></span></button>
   </div>
@@ -154,8 +155,46 @@
     <button class="btn secondary" id="confirmNo">CANCELAR</button>
   </div>
 </div>
+
+<div class="overlay hidden" id="mpOverlay">
+  <div class="panel">
+    <span class="big-emoji">📶</span>
+    <h2>MULTIPLAYER LOCAL</h2>
+
+    <div id="mpChoice">
+      <p>Jogue com outra pessoa no mesmo WiFi. Baralho completo, primeiro a 7 pontos.</p>
+      <input type="text" id="mpNameInput" maxlength="12" placeholder="seu nome (opcional)">
+      <button class="btn" id="mpCreateBtn">CRIAR SALA (sou o PC)</button>
+      <button class="btn secondary" id="mpJoinBtn">ENTRAR COM CÓDIGO (sou o celular)</button>
+      <button class="btn secondary" id="mpChoiceCancel">VOLTAR</button>
+    </div>
+
+    <div id="mpCreatePanel" class="hidden">
+      <p>No celular, abra no navegador:</p>
+      <p class="mp-address" id="mpAddress">http://192.168.x.x:4321</p>
+      <p>Código da sala:</p>
+      <p class="mp-code" id="mpCode">----</p>
+      <p class="small-note" id="mpCreateStatus">Aguardando o segundo jogador...</p>
+      <button class="btn secondary" id="mpCreateCancel">CANCELAR</button>
+    </div>
+
+    <div id="mpJoinPanel" class="hidden">
+      <p>Digite o código de 4 caracteres mostrado no PC:</p>
+      <input type="text" id="mpCodeInput" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="AB3F">
+      <p class="small-note" id="mpJoinError"></p>
+      <button class="btn" id="mpJoinSubmit">ENTRAR</button>
+      <button class="btn secondary" id="mpJoinCancel">VOLTAR</button>
+    </div>
+
+    <div id="mpErrorPanel" class="hidden">
+      <p id="mpErrorText">Multiplayer local exige rodar <code>node server.js</code> no PC.</p>
+      <button class="btn secondary" id="mpErrorClose">FECHAR</button>
+    </div>
+  </div>
+</div>
 <script src="shared/util.js"></script>
 <script src="shared/cards.js"></script>
 <script src="index.js"></script>
+<script src="mp.js"></script>
 </body>
 </html>

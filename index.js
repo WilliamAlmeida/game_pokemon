@@ -3,8 +3,6 @@
    Depende de shared/util.js e shared/cards.js (carregados antes).
    Dados dos cards, elementos e sprites vivem em shared/cards.js.
 ===================================================================== */
-const HAND_SIZE=5;
-const SHIELDS=['antichamas','impermeavel'];
 const PACK_PRICE=10, COMBO_PRICE=26, DUPE_VALUE=4;
 const RIVALS=[
  {id:'r1',ic:'👶',name:'IRMÃO CAÇULA',ai:'easy',target:3,reward:15,desc:'fácil · 3 pontos · 🪙15'},
@@ -171,6 +169,8 @@ const SCREENS=['menu','game','album','campaign'];
 function show(name){
   SCREENS.forEach(s=>$('screen-'+s).classList.toggle('hidden',s!==name));
   $('homeBtn').classList.toggle('hidden',name==='menu');
+  $('gameTitle').classList.toggle('hidden',name==='game');
+  $('gameSubtitle').classList.toggle('hidden',name==='game');
   if(name==='menu'){refreshMenu();startCarousel();} else stopCarousel();
   if(name==='album')renderAlbum();
   if(name==='campaign')renderCampaign();
@@ -210,7 +210,10 @@ function renderCarousel(){
   $('caroName').textContent=byN(caroCards[caroIdx]).name;
 }
 $('homeBtn').addEventListener('click',()=>{sfx.click();
-  if(battle.active){askConfirm('SAIR DA PARTIDA?','A partida atual será perdida (sem recompensa).',()=>{battle.active=false;show('menu');});}
+  if(battle.active){askConfirm('SAIR DA PARTIDA?','A partida atual será perdida (sem recompensa).',()=>{
+    if(battle.mode==='multiplayer')mpLeave();
+    battle.active=false;show('menu');
+  });}
   else show('menu');
 });
 $('soundBtn').addEventListener('click',()=>{
@@ -226,6 +229,11 @@ document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()
   if(nav==='rules'){$('rulesOverlay').classList.remove('hidden');return;}
   if(nav==='quick'){openDiff('PARTIDA RÁPIDA','Baralho completo dos 60 cards. Primeiro a 7 pontos!','quick');return;}
   if(nav==='survival'){openDiff('SOBREVIVÊNCIA','Vença o máximo de rodadas seguidas. Uma derrota e acabou! Empate não elimina.','survival');return;}
+  if(nav==='multiplayer'){
+    if(typeof mpOpenLobby==='function') mpOpenLobby();
+    else askConfirm('MULTIPLAYER INDISPONÍVEL','Este é o pacote standalone (sem servidor). Rode node server.js a partir dos arquivos-fonte do projeto para jogar em multiplayer.', ()=>{});
+    return;
+  }
   show(nav);
 }));
 $('rulesClose').addEventListener('click',()=>{sfx.click();$('rulesOverlay').classList.add('hidden');});
@@ -459,7 +467,8 @@ function onHandTap(i,el){
     return;
   }
   sfx.click();
-  playRound(i);
+  if(battle.mode==='multiplayer'){ mpPlayCard(i); }
+  else{ playRound(i); }
 }
 
 /* IA do rival */
@@ -480,20 +489,11 @@ function cpuPlay(){
   return {card,shield};
 }
 
-async function playRound(cardIdx){
-  battle.locked=true;hand.classList.add('locked');
+/* metade de baixo — reveal/animação/aplicação de outcome, idêntica para
+   single-player (CPU) e multiplayer (servidor); recebe as cartas e o
+   resultado já decidido, não decide "quem é o oponente". */
+async function resolveAndAnimateRound({pCardData,pShield,cCardData,cShield,outcome,phrase}){
   banner.textContent='';banner.className='result-banner';bannerSub.textContent='';
-
-  const pCardData=battle.pHand.splice(cardIdx,1)[0];
-  let pShield=null;
-  if(battle.armedShieldIdx!==null){
-    const shIdx=battle.armedShieldIdx>cardIdx?battle.armedShieldIdx-1:battle.armedShieldIdx;
-    pShield=battle.pHand.splice(shIdx,1)[0];
-    battle.armedShieldIdx=null;
-  }
-  const cpu=cpuPlay();
-  const cCardData=cpu.card, cShield=cpu.shield;
-
   slotP.innerHTML='';slotC.innerHTML='';
   const pWrap=cardEl(pCardData);pWrap.classList.add('in-slot','enter-left','holo');
   slotP.appendChild(pWrap);
@@ -523,17 +523,6 @@ async function playRound(cardIdx){
   await wait(520);
   arena.classList.remove('shake');
 
-  const pe=pCardData.elem, ce=cCardData.elem;
-  const pShieldWins=pShield&&BEATS[pShield.elem].includes(ce);
-  const cShieldWins=cShield&&BEATS[cShield.elem].includes(pe);
-  let outcome,phrase='';
-  if(pShieldWins&&cShieldWins){outcome='draw';phrase='os dois escudos anularam os ataques';}
-  else if(pShieldWins){outcome='win';phrase=`${ELEMS[pShield.elem].emoji} ${ELEMS[pShield.elem].label} anula ${ELEMS[ce].label}`;}
-  else if(cShieldWins){outcome='lose';phrase=`${ELEMS[cShield.elem].emoji} ${ELEMS[cShield.elem].label} anula ${ELEMS[pe].label}`;}
-  else if(pe===ce){outcome='draw';phrase=`${ELEMS[pe].emoji} ${ELEMS[pe].label} contra ${ELEMS[ce].label}`;}
-  else if(BEATS[pe].includes(ce)){outcome='win';phrase=`${ELEMS[pe].emoji} ${ELEMS[pe].label} vence ${ELEMS[ce].label}`;}
-  else{outcome='lose';phrase=`${ELEMS[ce].emoji} ${ELEMS[ce].label} vence ${ELEMS[pe].label}`;}
-
   if(outcome==='win'){
     battle.pScore++;battle.streak++;gainXp(5);
     if(battle.mode==='campaign'){battle.roundCoins++;}
@@ -542,7 +531,7 @@ async function playRound(cardIdx){
     bump('pScore',battle.pScore);sfx.win();
   }else if(outcome==='lose'){
     battle.cScore++;battle.streak=0;
-    banner.textContent='O RIVAL VENCEU A RODADA!';banner.classList.add('lose');
+    banner.textContent=`${battle.oppLabel||'O RIVAL'} VENCEU A RODADA!`;banner.classList.add('lose');
     cWrap.classList.add('winner-glow');pWrap.classList.add('loser');
     bump('cScore',battle.cScore);sfx.lose();
   }else{
@@ -557,6 +546,25 @@ async function playRound(cardIdx){
   $('streak').textContent=streakBits.join(' · ');
 
   await wait(1700);
+}
+
+/* metade de cima — single-player: decide o que a CPU joga, resolve o
+   outcome via shared/cards.js e delega a animação/aplicação. */
+async function playRound(cardIdx){
+  battle.locked=true;hand.classList.add('locked');
+  const pCardData=battle.pHand.splice(cardIdx,1)[0];
+  let pShield=null;
+  if(battle.armedShieldIdx!==null){
+    const shIdx=battle.armedShieldIdx>cardIdx?battle.armedShieldIdx-1:battle.armedShieldIdx;
+    pShield=battle.pHand.splice(shIdx,1)[0];
+    battle.armedShieldIdx=null;
+  }
+  const cpu=cpuPlay();
+  const cCardData=cpu.card, cShield=cpu.shield;
+  const {outcome,phrase}=resolveRoundOutcome(
+    pCardData.elem, cCardData.elem, pShield?pShield.elem:null, cShield?cShield.elem:null);
+
+  await resolveAndAnimateRound({pCardData,pShield,cCardData,cShield,outcome,phrase});
   if(!battle.active)return; // saiu no meio
 
   /* fim de partida? */
@@ -622,10 +630,12 @@ function endBattle(won){
 }
 $('goMain').addEventListener('click',()=>{sfx.click();
   $('endOverlay').classList.add('hidden');
+  if(battle.mode==='multiplayer'){show('menu');return;}
   show(lastCfg&&lastCfg.mode==='campaign'?'campaign':'menu');
 });
 $('goAgain').addEventListener('click',()=>{sfx.click();
   $('endOverlay').classList.add('hidden');
+  if(battle.mode==='multiplayer'){mpOpenLobby();return;}
   if(lastCfg)startBattle(lastCfg);
 });
 

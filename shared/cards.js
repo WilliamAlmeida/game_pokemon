@@ -30,6 +30,23 @@ const BEATS = {
   agua:['papel','tesoura','corda','fogo'], antichamas:['fogo'], impermeavel:['agua']
 };
 
+const HAND_SIZE=5;
+const SHIELDS=['antichamas','impermeavel'];
+
+/* ================== resolução de rodada (jokenpô com escudos) ================== */
+function resolveRoundOutcome(pe, ce, pShieldElem, cShieldElem){
+  const pShieldWins = pShieldElem && BEATS[pShieldElem].includes(ce);
+  const cShieldWins = cShieldElem && BEATS[cShieldElem].includes(pe);
+  let outcome, phrase='';
+  if(pShieldWins && cShieldWins){outcome='draw';phrase='os dois escudos anularam os ataques';}
+  else if(pShieldWins){outcome='win';phrase=`${ELEMS[pShieldElem].emoji} ${ELEMS[pShieldElem].label} anula ${ELEMS[ce].label}`;}
+  else if(cShieldWins){outcome='lose';phrase=`${ELEMS[cShieldElem].emoji} ${ELEMS[cShieldElem].label} anula ${ELEMS[pe].label}`;}
+  else if(pe===ce){outcome='draw';phrase=`${ELEMS[pe].emoji} ${ELEMS[pe].label} contra ${ELEMS[ce].label}`;}
+  else if(BEATS[pe].includes(ce)){outcome='win';phrase=`${ELEMS[pe].emoji} ${ELEMS[pe].label} vence ${ELEMS[ce].label}`;}
+  else{outcome='lose';phrase=`${ELEMS[ce].emoji} ${ELEMS[ce].label} vence ${ELEMS[pe].label}`;}
+  return {outcome, phrase};
+}
+
 /* ============ OS 60 CARDS — pares de elemento oficiais ============ */
 const COLLECTION = [
  {n:1,name:'CHARIZARD',el:['antichamas','agua']},{n:2,name:'PIKACHU',el:['antichamas','tesoura']},
@@ -79,4 +96,8 @@ function backSprite(elem){
   const [col,row]=BACK_POS[elem];
   return `background-image:url('${SHEET_BACKS}');background-size:${B_COLS*100}% ${B_ROWS*100}%;`+
          `background-position:${(col*100/(B_COLS-1)).toFixed(4)}% ${(row*100/(B_ROWS-1)).toFixed(4)}%;`;
+}
+
+if(typeof module!=='undefined' && module.exports){
+  module.exports={COLLECTION, ELEMS, BEATS, byN, SHIELDS, HAND_SIZE, resolveRoundOutcome};
 }
